@@ -3,8 +3,8 @@ on:
   issue_comment:
     types: [created]
 jobs:
-  update_submodule_with_latest_changes:
-    name: Update Submodule with Latest Changes
+  update_pr_branch:
+    name: Update PR Branch on PR Comment
     if: github.event.issue.pull_request != '' && github.event.comment.body == '/update'
     runs-on: ubuntu-latest
     steps:
@@ -35,8 +35,8 @@ jobs:
             console.log(`##[set-output name=base_branch;]${baseBranch}`);
       - name: Update PR branch
         run: |
-          # git remote add pr_remote ${{ steps.fetch_pr_and_target_branch.outputs.pr_remote_url }}
-          # git fetch pr_remote
+          git remote add pr_remote ${{ steps.fetch_pr_and_target_branch.outputs.pr_remote_url }}
+          git fetch pr_remote
           git checkout ${{ steps.fetch_pr_and_target_branch.outputs.pr_branch }}
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
