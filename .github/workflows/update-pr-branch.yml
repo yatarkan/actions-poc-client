@@ -5,7 +5,7 @@ on:
 jobs:
   update_submodule_with_latest_changes:
     name: Update Submodule with Latest Changes
-    if: github.event.issue.pull_request != '' && github.event.comment.body == '/update')
+    if: github.event.issue.pull_request != '' && github.event.comment.body == '/update'
     runs-on: ubuntu-latest
     steps:
       - name: Fetch latest code
