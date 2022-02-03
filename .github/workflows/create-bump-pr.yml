@@ -1,0 +1,94 @@
+name: "Create server PR with submodule bump triggered on PR Comment"
+on:
+  issue_comment:
+    types: [created]
+env:
+  BASE_REPO_OWNER: yatarkan
+  SERVER_REPO_NAME: actions-poc
+  CLIENT_REPO_NAME: actions-poc-client
+  GITHUB_ACTIONS_BOT_NAME: github-actions[bot]
+  GITHUB_ACTIONS_BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+jobs:
+  create_bump_pr:
+    name: Create PR with bump on PR Comment
+    if: github.event.issue.pull_request != '' && github.event.comment.body == '/create_bump_pr'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process client PR (fetch repo owner, PR and target branches, remote URL)
+        id: process_client_pr
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.ACTIONS_PAT }}
+          script: |
+            const { issue, repository } = context.payload;
+            const [ repo_owner ] = repository.full_name.split('/');
+            
+            const { data: pull_request } = await github.pulls.get({
+              owner,
+              repo,
+              pull_number: issue.number
+            });
+
+            const { ref: pr_branch } = pull_request.head;
+            const { ref: target_branch } = pull_request.base;
+            const { clone_url: pr_remote_url } = pull_request.head.repo;
+            const pr_title = pull_request.title;
+
+            console.log(`##[set-output name=repo_owner;]${repo_owner}`);
+            console.log(`##[set-output name=pr_branch;]${pr_branch}`);
+            console.log(`##[set-output name=pr_remote_url;]${pr_remote_url}`);
+            console.log(`##[set-output name=target_branch;]${target_branch}`);
+            console.log(`##[set-output name=pr_title;]${pr_title}`);
+      
+      - name: Create branch and bump submodules
+        id: create_branch_and_bump_submodule
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.ACTIONS_PAT }}
+          repository: ${{ env.BASE_REPO_OWNER }}/${{ env.SERVER_REPO_NAME }}
+          ref: ${{ steps.process_client_pr.outputs.target_branch }}
+          fetch-depth: 0
+          submodules: 'true'
+        run: |
+          git config user.name ${{ env.GITHUB_ACTIONS_BOT_NAME }}
+          git config user.email ${{ env.GITHUB_ACTIONS_BOT_EMAIL }}
+          cd client
+          git remote add client_pr_remote ${{ steps.process_client_pr.outputs.pr_remote_url }}
+          git fetch client_pr_remote
+          git checkout ${{ steps.process_client_pr.outputs.pr_branch }}
+          cd ..
+          git checkout -b ${{ steps.process_client_pr.outputs.pr_branch }}
+          git add client
+          git commit -m 'Bump client'
+          SERVER_PR_REMOTE=sed -e "s/$CLIENT_REPO_NAME/$SERVER_REPO_NAME/g" ${{ steps.process_client_pr.outputs.pr_remote_url }}
+          git remote add server_pr_remote ${SERVER_PR_REMOTE}
+          git push server_pr_remote
+
+      - name: Create bump PR
+        id: create_bump_pr
+        uses: actions/github-script@v5
+        github-token: ${{ secrets.ACTIONS_PAT }}
+        env:
+          PR_REPO_WORNER: ${{ steps.process_client_pr.outputs.repo_owner }}
+          PR_BRANCH: ${{ steps.process_client_pr.outputs.pr_branch }}
+          TARGET_BRANCH: ${{ steps.process_client_pr.outputs.target_branch }}
+          PR_TITLE: ${{ steps.process_client_pr.outputs.pr_title }}
+        with:
+          script: |
+            const owner = process.env.PR_REPO_WORNER;
+            const repo = process.env.SERVER_REPO_NAME;
+            const head = process.env.PR_BRANCH;
+            const base = process.env.TARGET_BRANCH;
+            const title = process.env.PR_TITLE;
+
+            const { data: created_pull_request } = await github.pulls.create({
+              owner,
+              repo,
+              head,
+              base,
+              title,
+            });
+
+            const { number } = created_pull_request;
+            console.log(`Pull request #${number} is created`);
+
