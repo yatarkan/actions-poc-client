@@ -85,6 +85,9 @@ jobs:
             const base = process.env.TARGET_BRANCH;
             const title = process.env.PR_TITLE;
 
+            const path = require('path');
+            console.log(path.resolve());
+
             const { data: created_pull_request } = await github.rest.pulls.create({
               owner,
               repo: server_repo,
