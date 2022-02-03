@@ -86,7 +86,7 @@ jobs:
             const title = process.env.PR_TITLE;
 
             const path = require('path');
-            const fs = require('fs');
+            const fs = require('fs').promises;
 
             const pr_template_file_path = path.resolve('pull_request_template.md');
             let pr_template_file_content = null;
