@@ -40,8 +40,7 @@ jobs:
             console.log(`##[set-output name=target_branch;]${target_branch}`);
             console.log(`##[set-output name=pr_title;]${pr_title}`);
       
-      - name: Create branch and bump submodules
-        id: create_branch_and_bump_submodule
+      - name: Checkout
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.ACTIONS_PAT }}
@@ -49,6 +48,8 @@ jobs:
           ref: ${{ steps.process_client_pr.outputs.target_branch }}
           fetch-depth: 0
           submodules: 'true'
+
+      - name: Create branch and bump submodules
         run: |
           git config user.name ${{ env.GITHUB_ACTIONS_BOT_NAME }}
           git config user.email ${{ env.GITHUB_ACTIONS_BOT_EMAIL }}
