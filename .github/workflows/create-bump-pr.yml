@@ -23,7 +23,7 @@ jobs:
             const { issue, repository } = context.payload;
             const [ repo_owner ] = repository.full_name.split('/');
             
-            const { data: pull_request } = await github.pulls.get({
+            const { data: pull_request } = await github.rest.pulls.get({
               owner,
               repo,
               pull_number: issue.number
@@ -82,7 +82,7 @@ jobs:
             const base = process.env.TARGET_BRANCH;
             const title = process.env.PR_TITLE;
 
-            const { data: created_pull_request } = await github.pulls.create({
+            const { data: created_pull_request } = await github.rest.pulls.create({
               owner,
               repo,
               head,
