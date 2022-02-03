@@ -61,7 +61,7 @@ jobs:
           git checkout -b ${{ steps.process_client_pr.outputs.pr_branch }}
           git add client
           git commit -m 'Bump client'
-          SERVER_PR_REMOTE=$(sed -e "s/$CLIENT_REPO_NAME/$SERVER_REPO_NAME/g" ${{ steps.process_client_pr.outputs.pr_remote_url }})
+          SERVER_PR_REMOTE=$(echo ${{ steps.process_client_pr.outputs.pr_remote_url }} | sed -e "s/$CLIENT_REPO_NAME/$SERVER_REPO_NAME/g")
           git remote add server_pr_remote ${SERVER_PR_REMOTE}
           git push server_pr_remote
 
