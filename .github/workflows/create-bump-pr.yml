@@ -86,7 +86,10 @@ jobs:
             const title = process.env.PR_TITLE;
 
             const path = require('path');
-            console.log(path.resolve());
+            const fs = require('fs');
+            fs.readdirSync(path.resolve()).forEach((file) => {
+              console.log(file);
+            });
 
             const { data: created_pull_request } = await github.rest.pulls.create({
               owner,
