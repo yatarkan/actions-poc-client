@@ -68,13 +68,13 @@ jobs:
       - name: Create bump PR
         id: create_bump_pr
         uses: actions/github-script@v5
-        github-token: ${{ secrets.ACTIONS_PAT }}
         env:
           PR_REPO_WORNER: ${{ steps.process_client_pr.outputs.repo_owner }}
           PR_BRANCH: ${{ steps.process_client_pr.outputs.pr_branch }}
           TARGET_BRANCH: ${{ steps.process_client_pr.outputs.target_branch }}
           PR_TITLE: ${{ steps.process_client_pr.outputs.pr_title }}
         with:
+          github-token: ${{ secrets.ACTIONS_PAT }}
           script: |
             const owner = process.env.PR_REPO_WORNER;
             const repo = process.env.SERVER_REPO_NAME;
