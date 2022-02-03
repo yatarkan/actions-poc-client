@@ -78,7 +78,7 @@ jobs:
           script: |
             const owner = process.env.PR_REPO_WORNER;
             const repo = process.env.SERVER_REPO_NAME;
-            const head = process.env.PR_BRANCH;
+            const head = `${owner}:${process.env.PR_BRANCH}`;
             const base = process.env.TARGET_BRANCH;
             const title = process.env.PR_TITLE;
 
