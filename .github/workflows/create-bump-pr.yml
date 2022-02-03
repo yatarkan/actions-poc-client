@@ -21,7 +21,7 @@ jobs:
           github-token: ${{ secrets.ACTIONS_PAT }}
           script: |
             const { issue, repository } = context.payload;
-            const [ repo_owner ] = repository.full_name.split('/');
+            const [ owner ] = repository.full_name.split('/');
             
             const { data: pull_request } = await github.rest.pulls.get({
               owner,
@@ -34,7 +34,7 @@ jobs:
             const { clone_url: pr_remote_url } = pull_request.head.repo;
             const pr_title = pull_request.title;
 
-            console.log(`##[set-output name=repo_owner;]${repo_owner}`);
+            console.log(`##[set-output name=repo_owner;]${owner}`);
             console.log(`##[set-output name=pr_branch;]${pr_branch}`);
             console.log(`##[set-output name=pr_remote_url;]${pr_remote_url}`);
             console.log(`##[set-output name=target_branch;]${target_branch}`);
