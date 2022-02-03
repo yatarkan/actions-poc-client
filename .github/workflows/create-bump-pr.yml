@@ -80,19 +80,40 @@ jobs:
           github-token: ${{ secrets.ACTIONS_PAT }}
           script: |
             const owner = process.env.PR_REPO_WORNER;
-            const repo = process.env.SERVER_REPO_NAME;
+            const server_repo = process.env.SERVER_REPO_NAME;
             const head = process.env.PR_HEAD;
             const base = process.env.TARGET_BRANCH;
             const title = process.env.PR_TITLE;
 
             const { data: created_pull_request } = await github.rest.pulls.create({
               owner,
-              repo,
+              repo: server_repo,
               head,
               base,
               title,
             });
 
-            const { number } = created_pull_request;
-            console.log(`Pull request #${number} is created`);
+            // Try to add only-bump label
+            try {
+              await github.rest.issues.addLabels({
+                owner,
+                repo: server_repo,
+                issue_number: created_pull_request.number,
+                labels: ['only-bump'],
+              });
+            } catch (error) {
+              console.log(`Failed to add only-bump label to PR #${created_pull_request.number}`);
+              console.log(error);
+            }
 
+            // Add comment to original client PR
+            const client_base_repo_with_owner = `${process.env.BASE_REPO_OWNER}/${process.env.CLIENT_REPO_NAME}`;
+            const comment = `Pull request with bump is created: ${owner}/${server_repo}#${created_pull_request.number}`;
+            const { issue } = context.payload;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo: process.env.CLIENT_REPO_NAME,
+              issue_number: issue.number,
+              body: comment,
+            });
