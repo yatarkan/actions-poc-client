@@ -18,7 +18,7 @@ jobs:
           script: |
             const command = context.payload.comment.body.trim();
             const commandRegExp = /^\/pick:(?<commit>[0-9A-Za-z]+):(?<branch>\S+)$/g;
-            const match = commandRegExp.exec(personList);
+            const match = commandRegExp.exec(command);
             if (!match) {
               throw Error(`Invalid action command: ${command}`);
             }
