@@ -71,15 +71,14 @@ jobs:
         id: create_bump_pr
         uses: actions/github-script@v5
         env:
-          PR_REPO_WORNER: ${{ steps.process_client_pr.outputs.repo_owner }}
-          PR_BRANCH: ${{ steps.process_client_pr.outputs.pr_branch }}
+          PR_REPO_OWRNER: ${{ steps.process_client_pr.outputs.repo_owner }}
           TARGET_BRANCH: ${{ steps.process_client_pr.outputs.target_branch }}
           PR_HEAD: ${{ steps.process_client_pr.outputs.pr_head }}
           PR_TITLE: ${{ steps.process_client_pr.outputs.pr_title }}
         with:
           github-token: ${{ secrets.ACTIONS_PAT }}
           script: |
-            const owner = process.env.PR_REPO_WORNER;
+            const owner = process.env.PR_REPO_OWRNER;
             const server_repo = process.env.SERVER_REPO_NAME;
             const head = process.env.PR_HEAD;
             const base = process.env.TARGET_BRANCH;
@@ -120,7 +119,6 @@ jobs:
             }
 
             // Add comment to original client PR
-            const client_base_repo_with_owner = `${process.env.BASE_REPO_OWNER}/${process.env.CLIENT_REPO_NAME}`;
             const comment = `Pull request with bump is created: ${owner}/${server_repo}#${created_pull_request.number}`;
             const { issue } = context.payload;
             
