@@ -1,0 +1,142 @@
+name: "Create PR with cherry-pick triggered on PR Comment"
+on:
+  issue_comment:
+    types: [created]
+env:
+  GITHUB_ACTIONS_BOT_NAME: github-actions[bot]
+  GITHUB_ACTIONS_BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+jobs:
+  create_cherry_pick_pr:
+    name: Create PR with cherry-pick triggered on PR Comment
+    if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/pick:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate and parse action command
+        id: parse_action_command
+        uses: actions/github-script@v5
+        with:
+          script: |
+            const command = github.event.comment.body.trim();
+            const commandRegExp = /^\/pick:(?<commit>[0-9A-Za-z]+):(?<branch>\S+)$/g;
+            const match = commandRegExp.exec(personList);
+            if (!match) {
+              throw Error(`Invalid action command: ${command}`);
+            }
+            const { commit, branch } = match.groups;
+            console.log(`##[set-output name=commit;]${commit}`);
+            console.log(`##[set-output name=branch;]${branch}`);
+
+      - name: Process PR (fetch repo owner, PR and target branches, remote URL)
+        id: process_pr
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.ACTIONS_PAT }}
+          script: |
+            const { issue, repository } = context.payload;
+            const [ owner, repo ] = repository.full_name.split('/');
+            
+            const { data: pull_request } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: issue.number
+            });
+
+            const { clone_url: pr_remote_url } = pull_request.head.repo;
+            const pr_title = pull_request.title;
+            
+            const [pr_owner] = pull_request.head.label.split(':');
+
+            const cherry_pick_branch = `cherry-pick/pr-${issue.number}`;
+            const cherry_pick_pr_head_label = `${pr_owner}:${cherry_pick_branch}`;
+
+            console.log(`##[set-output name=pr_remote_url;]${pr_remote_url}`);
+            console.log(`##[set-output name=pr_title;]${pr_title}`);
+
+            console.log(`##[set-output name=cherry_pick_pr_head_label;]${cherry_pick_pr_head_label}`);
+            console.log(`##[set-output name=cherry_pick_branch;]${cherry_pick_branch}`);
+      
+      - name: Checkout to commit to pick
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ steps.parse_action_command.outputs.commit }}
+          fetch-depth: 0
+          submodules: 'true'
+
+      - name: Checkout to base branch
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ steps.parse_action_command.outputs.branch }}
+          fetch-depth: 0
+          submodules: 'true'
+
+      - name: Create branch for cherry-pick
+        run: |
+          git config user.name ${{ env.GITHUB_ACTIONS_BOT_NAME }}
+          git config user.email ${{ env.GITHUB_ACTIONS_BOT_EMAIL }}
+          git remote add pr_remote ${{ steps.process_pr.outputs.pr_remote_url }}
+          git fetch pr_remote
+          git checkout -b ${{ steps.process_pr.outputs.cherry_pick_branch }}
+          git cherry-pick ${{ steps.parse_action_command.outputs.commit }}
+          git push pr_remote
+
+      - name: Create cherry-pick PR
+        uses: actions/github-script@v5
+        env:
+          TARGET_BRANCH: ${{ steps.parse_action_command.outputs.branch }}
+          PR_HEAD: ${{ steps.process_pr.outputs.cherry_pick_pr_head_label }}
+          PR_TITLE: ${{ steps.process_pr.outputs.pr_title }}
+        with:
+          github-token: ${{ secrets.ACTIONS_PAT }}
+          script: |
+            const { issue, repository } = context.payload;
+            const [ owner, repo ] = repository.full_name.split('/');
+
+            const head = process.env.PR_HEAD;
+            const base = process.env.TARGET_BRANCH;
+            const title = process.env.PR_TITLE;
+
+            const path = require('path');
+            const fs = require('fs').promises;
+
+            const pr_template_file_path = path.resolve('pull_request_template.md');
+            let pr_template_file_content = null;
+            try {
+              pr_template_file_content = await fs.readFile(pr_template_file_path, 'utf8')
+            } catch (error) {
+              console.log('Failed to load pull request template file');
+              console.log(error);
+            }
+
+            const { data: created_pull_request } = await github.rest.pulls.create({
+              owner,
+              repo,
+              head,
+              base,
+              title,
+              body: pr_template_file_content,
+            });
+
+            // Try to add cherry-pick label
+            try {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: created_pull_request.number,
+                labels: ['cherry-pick'],
+              });
+            } catch (error) {
+              console.log(`Failed to add cherry-pick label to PR #${created_pull_request.number}`);
+              console.log(error);
+            }
+
+            // Add comment to original client PR
+            const comment = `Pull request with cherry-pick is created: ${owner}/${repo}#${created_pull_request.number}`;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issue.number,
+              body: comment,
+            });
